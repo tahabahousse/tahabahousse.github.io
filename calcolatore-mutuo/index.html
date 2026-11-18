@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolatore mutuo: rata e piano di ammortamento</title>
+<style>
+  :root{--ink:#16202c;--muted:#5d6b7c;--line:#e2e7ee;--bg:#f6f8fb;--blue:#2457d6;--orange:#f08a24}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  .w{max-width:1080px;margin:auto;padding:40px 22px 60px}
+  h1{margin:0 0 6px;font-size:2rem}
+  .lead{color:var(--muted);margin:0 0 28px;max-width:720px}
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:22px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:12px 0 4px}
+  input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:1rem;background:#fff}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:600px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .k{background:var(--bg);border-radius:10px;padding:12px}
+  .k span{display:block;font-size:.78rem;color:var(--muted)}
+  .k b{font-size:1.35rem}
+  canvas{width:100%;height:240px;margin-top:18px}
+  .legend{font-size:.82rem;color:var(--muted);margin-top:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;margin-top:18px}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .tbl{max-height:360px;overflow:auto}
+  button{margin-top:16px;background:var(--blue);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;cursor:pointer}
+  .err{color:#b42318;margin-top:8px}
+  footer{color:var(--muted);font-size:.82rem;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>Calcolatore mutuo</h1>
+  <p class="lead">Rata mensile, interessi totali e piano di ammortamento alla francese (rata costante). Puoi simulare anche un'estinzione parziale anticipata e vedere quanti interessi risparmi.</p>
+
+  <div class="grid">
+    <div class="card">
+      <label for="importo">Importo del mutuo (€)</label><input id="importo" type="number" value="150000" min="0" step="1000">
+      <label for="tan">Tasso annuo nominale, TAN (%)</label><input id="tan" type="number" value="3.2" min="0" step="0.05">
+      <label for="anni">Durata (anni)</label><input id="anni" type="number" value="25" min="1" max="40">
+      <label for="spese">Spese iniziali (istruttoria, perizia, notaio) (€)</label><input id="spese" type="number" value="2500" min="0" step="100">
+      <label for="extra">Estinzione parziale anticipata (€)</label><input id="extra" type="number" value="0" min="0" step="1000">
+      <label for="extraAnno">…nell'anno</label><input id="extraAnno" type="number" value="5" min="1">
+      <label for="modo">Dopo l'estinzione</label>
+      <select id="modo"><option value="rata">Riduci la rata, stessa durata</option><option value="durata">Stessa rata, riduci la durata</option></select>
+      <div class="err" id="err"></div>
+      <button id="csv">Scarica il piano (CSV)</button>
+    </div>
+
+    <div class="card">
+      <div class="kpis">
+        <div class="k"><span>Rata iniziale</span><b id="kRata">–</b></div>
+        <div class="k"><span>Interessi totali</span><b id="kInt">–</b></div>
+        <div class="k"><span>Costo totale</span><b id="kTot">–</b></div>
+        <div class="k"><span>Risparmio da estinzione</span><b id="kRisp">–</b></div>
+      </div>
+      <canvas id="chart" width="1400" height="480"></canvas>
+      <div class="legend"><i style="background:var(--blue)"></i>Quota capitale per anno<i style="background:var(--orange)"></i>Quota interessi per anno</div>
+      <div class="tbl"><table id="tab"></table></div>
+    </div>
+  </div>
+  <footer>Progetto di Taha Bahousse, realizzato con il supporto di strumenti di AI. Simulazione indicativa: non considera imposte, assicurazioni obbligatorie né variazioni del tasso. Non è una consulenza finanziaria.</footer>
+</div>
+
+<script>
+const eur = n => n.toLocaleString("it-IT",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+const eur2 = n => n.toLocaleString("it-IT",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2});
+const val = id => parseFloat(document.getElementById(id).value) || 0;
+
+function rata(P, i, n){ return i === 0 ? P / n : P * i / (1 - Math.pow(1 + i, -n)); }
+
+function piano(P, tanPct, anni, extra = 0, extraAnno = 0, modo = "rata"){
+  const i = tanPct / 100 / 12, nTot = Math.round(anni * 12);
+  let debito = P, r = rata(P, i, nTot), mesi = [], m = 0;
+  while (debito > 0.005 && m < 1200){
+    m++;
+    const interessi = debito * i;
+    let capitale = Math.min(r - interessi, debito);
+    debito -= capitale;
+    let ext = 0;
+    if (extra > 0 && m === extraAnno * 12 && debito > 0){
+      ext = Math.min(extra, debito); debito -= ext;
+      if (modo === "rata" && debito > 0) r = rata(debito, i, nTot - m);
+    }
+    mesi.push({m, rata: capitale + interessi, capitale, interessi, extra: ext, debito: Math.max(debito, 0)});
+  }
+  return mesi;
+}
+
+let ultimo = [];
+function calcola(){
+  const P = val("importo"), tan = val("tan"), anni = val("anni"), spese = val("spese");
+  const extra = val("extra"), extraAnno = val("extraAnno"), modo = document.getElementById("modo").value;
+  const err = document.getElementById("err"); err.textContent = "";
+  if (P <= 0 || anni <= 0 || tan < 0){ err.textContent = "Controlla importo, tasso e durata."; return; }
+  if (extra > 0 && extraAnno >= anni){ err.textContent = "L'anno dell'estinzione deve essere prima della fine del mutuo."; }
+
+  const base = piano(P, tan, anni);
+  const conEst = piano(P, tan, anni, extra, extraAnno, modo);
+  ultimo = conEst;
+  const intBase = base.reduce((s, x) => s + x.interessi, 0);
+  const intEst = conEst.reduce((s, x) => s + x.interessi, 0);
+
+  document.getElementById("kRata").textContent = eur2(conEst[0].rata);
+  document.getElementById("kInt").textContent = eur(intEst);
+  document.getElementById("kTot").textContent = eur(P + intEst + spese);
+  document.getElementById("kRisp").textContent = extra > 0 ? eur(intBase - intEst) : "–";
+
+  // per anno
+  const anniAgg = [];
+  conEst.forEach(x => {
+    const a = Math.ceil(x.m / 12);
+    anniAgg[a] = anniAgg[a] || {a, cap:0, int:0, ext:0, deb:0, rata:0};
+    anniAgg[a].cap += x.capitale; anniAgg[a].int += x.interessi; anniAgg[a].ext += x.extra; anniAgg[a].deb = x.debito; anniAgg[a].rata = x.rata;
+  });
+  const righe = anniAgg.filter(Boolean);
+  let h = "<tr><th>Anno</th><th>Rata (ultimo mese)</th><th>Quota capitale</th><th>Quota interessi</th><th>Estinzione</th><th>Debito residuo</th></tr>";
+  righe.forEach(y => h += `<tr><td>${y.a}</td><td>${eur2(y.rata)}</td><td>${eur(y.cap)}</td><td>${eur(y.int)}</td><td>${y.ext ? eur(y.ext) : "–"}</td><td>${eur(y.deb)}</td></tr>`);
+  document.getElementById("tab").innerHTML = h;
+  disegna(righe);
+}
+
+function disegna(righe){
+  const c = document.getElementById("chart"), g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  const max = Math.max(...righe.map(y => y.cap + y.int)) || 1;
+  const W = c.width, H = c.height - 40, bw = W / righe.length;
+  righe.forEach((y, k) => {
+    const hc = y.cap / max * H, hi = y.int / max * H, x = k * bw + bw * 0.15, w = bw * 0.7;
+    g.fillStyle = "#2457d6"; g.fillRect(x, H - hc, w, hc);
+    g.fillStyle = "#f08a24"; g.fillRect(x, H - hc - hi, w, hi);
+    if (righe.length <= 30 || k % 5 === 0){ g.fillStyle = "#5d6b7c"; g.font = "22px system-ui"; g.textAlign = "center"; g.fillText(y.a, x + w / 2, H + 30); }
+  });
+}
+
+document.getElementById("csv").onclick = () => {
+  let s = "mese;rata;quota_capitale;quota_interessi;estinzione;debito_residuo\n";
+  ultimo.forEach(x => s += [x.m, x.rata, x.capitale, x.interessi, x.extra, x.debito].map(v => typeof v === "number" ? v.toFixed(2).replace(".", ",") : v).join(";") + "\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([s], {type: "text/csv"})); a.download = "piano-ammortamento.csv"; a.click();
+};
+document.querySelectorAll("input,select").forEach(e => e.addEventListener("input", calcola));
+calcola();
+</script>
+</body>
+</html>

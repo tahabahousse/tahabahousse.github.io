@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confronto costi ETF: quanto ti costano le commissioni negli anni</title>
+<style>
+  :root{--ink:#14211c;--muted:#5b6b65;--line:#e1e8e4;--bg:#f5f8f6;--a:#0f9d6e;--b:#2f6fe0;--c:#d9480f}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  .w{max-width:1100px;margin:auto;padding:40px 22px 60px}
+  h1{margin:0 0 6px;font-size:2rem}
+  .lead{color:var(--muted);margin:0 0 26px;max-width:760px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:20px}
+  .row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+  @media(max-width:880px){.row{grid-template-columns:repeat(2,1fr)}}
+  label{display:block;font-size:.82rem;color:var(--muted);margin:0 0 4px}
+  input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:1rem}
+  .etfs{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+  @media(max-width:880px){.etfs{grid-template-columns:1fr}}
+  .etf{border-radius:12px;padding:14px;border:2px solid var(--line)}
+  .etf h3{margin:0 0 10px;font-size:1rem;display:flex;align-items:center;gap:8px}
+  .etf h3 i{width:12px;height:12px;border-radius:50%}
+  .etf label{margin-top:8px}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:14px;color:var(--muted);font-size:.9rem}
+  .chk input{width:auto}
+  canvas{width:100%;height:300px}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .best{font-weight:700;color:var(--a)}
+  .note{color:var(--muted);font-size:.85rem;margin-top:10px}
+  footer{color:var(--muted);font-size:.82rem}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>Confronto costi ETF</h1>
+  <p class="lead">Stesso rendimento di mercato, costi diversi. Inserisci il tuo piano di investimento e fino a tre ETF (o fondi) con il loro costo annuo (TER) e la commissione per ogni acquisto: vedi quanto capitale finale ti portano via i costi.</p>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="iniziale">Investimento iniziale (€)</label><input id="iniziale" type="number" value="5000" min="0" step="500"></div>
+      <div><label for="mensile">Versamento mensile (€)</label><input id="mensile" type="number" value="200" min="0" step="50"></div>
+      <div><label for="anni">Orizzonte (anni)</label><input id="anni" type="number" value="20" min="1" max="50"></div>
+      <div><label for="rend">Rendimento lordo annuo atteso (%)</label><input id="rend" type="number" value="6" step="0.5"></div>
+      <div><label for="tassa">Aliquota sulle plusvalenze (%)</label><input id="tassa" type="number" value="26" min="0" max="50"></div>
+    </div>
+    <div class="etfs">
+      <div class="etf" style="border-color:var(--a)"><h3><i style="background:var(--a)"></i><input id="n0" value="ETF indicizzato" style="border:0;padding:0;font-weight:700"></h3>
+        <label for="ter0">TER annuo (%)</label><input id="ter0" type="number" value="0.20" step="0.01" min="0">
+        <label for="fee0">Commissione per acquisto (€)</label><input id="fee0" type="number" value="1" step="0.5" min="0"></div>
+      <div class="etf" style="border-color:var(--b)"><h3><i style="background:var(--b)"></i><input id="n1" value="ETF tematico" style="border:0;padding:0;font-weight:700"></h3>
+        <label for="ter1">TER annuo (%)</label><input id="ter1" type="number" value="0.65" step="0.01" min="0">
+        <label for="fee1">Commissione per acquisto (€)</label><input id="fee1" type="number" value="2.95" step="0.5" min="0"></div>
+      <div class="etf" style="border-color:var(--c)"><h3><i style="background:var(--c)"></i><input id="n2" value="Fondo attivo" style="border:0;padding:0;font-weight:700"></h3>
+        <label for="ter2">TER annuo (%)</label><input id="ter2" type="number" value="1.80" step="0.01" min="0">
+        <label for="fee2">Commissione per acquisto (€)</label><input id="fee2" type="number" value="0" step="0.5" min="0"></div>
+    </div>
+    <label class="chk"><input id="netto" type="checkbox" checked> Mostra i valori al netto dell'imposta sulle plusvalenze, se vendi alla fine</label>
+  </div>
+
+  <div class="card">
+    <canvas id="chart" width="1400" height="560"></canvas>
+    <table id="tab" style="margin-top:14px"></table>
+    <p class="note" id="msg"></p>
+  </div>
+
+  <footer>Progetto di Taha Bahousse, realizzato con il supporto di strumenti di AI. Simulazione a rendimento costante, a scopo didattico: i rendimenti reali variano, e l'imposta è applicata in modo semplificato (aliquota unica sulla plusvalenza finale, senza bollo né compensazione delle minusvalenze). Non è una consulenza finanziaria.</footer>
+</div>
+
+<script>
+const COL = ["#0f9d6e", "#2f6fe0", "#d9480f"];
+const eur = n => n.toLocaleString("it-IT", {style:"currency", currency:"EUR", maximumFractionDigits:0});
+const v = id => parseFloat(document.getElementById(id).value) || 0;
+
+function simula(iniziale, mensile, anni, rendPct, terPct, fee){
+  const rm = Math.pow(1 + rendPct / 100, 1 / 12) - 1;   // rendimento mensile lordo
+  const cm = terPct / 100 / 12;                          // costo mensile del TER
+  let valore = Math.max(iniziale - (iniziale > 0 ? fee : 0), 0), versato = iniziale, commissioni = iniziale > 0 ? fee : 0, ter = 0;
+  const serie = [valore];
+  for (let m = 1; m <= anni * 12; m++){
+    valore *= (1 + rm);
+    const t = valore * cm; valore -= t; ter += t;
+    if (mensile > 0){ valore += Math.max(mensile - fee, 0); versato += mensile; commissioni += Math.min(fee, mensile); }
+    if (m % 12 === 0) serie.push(valore);
+  }
+  return {valore, versato, commissioni, ter, serie};
+}
+
+function calcola(){
+  const ini = v("iniziale"), men = v("mensile"), anni = Math.max(1, Math.round(v("anni"))), rend = v("rend"), tassa = v("tassa") / 100;
+  const netto = document.getElementById("netto").checked;
+  const zero = simula(ini, men, anni, rend, 0, 0);
+  const res = [0, 1, 2].map(k => {
+    const s = simula(ini, men, anni, rend, v("ter" + k), v("fee" + k));
+    const plus = Math.max(s.valore - s.versato, 0);
+    s.finale = netto ? s.valore - plus * tassa : s.valore;
+    s.nome = document.getElementById("n" + k).value || "ETF " + (k + 1);
+    return s;
+  });
+  const zPlus = Math.max(zero.valore - zero.versato, 0);
+  const zFin = netto ? zero.valore - zPlus * tassa : zero.valore;
+  const best = Math.max(...res.map(r => r.finale));
+
+  let h = `<tr><th>Prodotto</th><th>Totale versato</th><th>Valore finale${netto ? " netto" : ""}</th><th>Pagato in TER</th><th>Pagato in commissioni</th><th>Persi rispetto a costo zero</th></tr>`;
+  res.forEach(r => h += `<tr><td${r.finale === best ? ' class="best"' : ""}>${r.nome}</td><td>${eur(r.versato)}</td><td${r.finale === best ? ' class="best"' : ""}>${eur(r.finale)}</td><td>${eur(r.ter)}</td><td>${eur(r.commissioni)}</td><td>${eur(zFin - r.finale)}</td></tr>`);
+  document.getElementById("tab").innerHTML = h;
+
+  const ord = [...res].sort((a, b) => b.finale - a.finale);
+  document.getElementById("msg").textContent =
+    `Dopo ${anni} anni, la differenza tra ${ord[0].nome} e ${ord[2].nome} è di ${eur(ord[0].finale - ord[2].finale)}, a parità di rendimento di mercato.`;
+  disegna(res, anni);
+}
+
+function disegna(res, anni){
+  const c = document.getElementById("chart"), g = c.getContext("2d");
+  g.clearRect(0, 0, c.width, c.height);
+  const L = 120, B = 50, W = c.width - L - 20, H = c.height - B - 20;
+  const max = Math.max(...res.flatMap(r => r.serie)) * 1.05 || 1;
+  g.strokeStyle = "#e1e8e4"; g.fillStyle = "#5b6b65"; g.font = "22px system-ui"; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++){
+    const y = 20 + H - H * i / 4; g.beginPath(); g.moveTo(L, y); g.lineTo(L + W, y); g.stroke();
+    g.textAlign = "right"; g.fillText(Math.round(max * i / 4 / 1000) + "k €", L - 10, y + 7);
+  }
+  g.textAlign = "center";
+  for (let a = 0; a <= anni; a += Math.max(1, Math.round(anni / 10))) g.fillText(a, L + W * a / anni, 20 + H + 34);
+  res.forEach((r, k) => {
+    g.strokeStyle = COL[k]; g.lineWidth = 4; g.beginPath();
+    r.serie.forEach((val, a) => { const x = L + W * a / anni, y = 20 + H - H * val / max; a ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.stroke();
+  });
+}
+
+document.querySelectorAll("input").forEach(e => e.addEventListener("input", calcola));
+calcola();
+</script>
+</body>
+</html>
