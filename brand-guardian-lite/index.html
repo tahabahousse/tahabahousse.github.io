@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Guardian Lite: controllo anti "AI slop" per i testi di marketing</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --ink:#eef0f4; --muted:#9aa3b2; --ok:#3ecf8e; --warn:#f5a524; --bad:#f2555a; --accent:#7c9cff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; }
+  header { padding:48px 24px 24px; max-width:1100px; margin:auto; }
+  h1 { font-size:2.2rem; margin:0 0 8px; }
+  h1 span { color:var(--accent); }
+  header p { color:var(--muted); max-width:720px; margin:0; }
+  main { max-width:1100px; margin:auto; padding:0 24px 64px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media (max-width:860px){ main { grid-template-columns:1fr; } }
+  .card { background:var(--card); border-radius:14px; padding:20px; }
+  label { display:block; font-size:.85rem; color:var(--muted); margin:14px 0 6px; }
+  textarea, input { width:100%; background:#0f1115; color:var(--ink); border:1px solid #2a2f3a; border-radius:10px; padding:10px; font:inherit; }
+  textarea { min-height:150px; resize:vertical; }
+  button { margin-top:16px; background:var(--accent); color:#0f1115; border:0; border-radius:10px; padding:12px 18px; font-weight:700; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--ink); border:1px solid #2a2f3a; margin-left:8px; }
+  .score { font-size:4rem; font-weight:800; line-height:1; }
+  .verdict { font-weight:700; margin-top:4px; }
+  ul.issues { list-style:none; padding:0; margin:16px 0 0; }
+  ul.issues li { padding:10px 12px; border-radius:10px; background:#0f1115; margin-bottom:8px; border-left:4px solid var(--warn); }
+  ul.issues li.bad { border-color:var(--bad); }
+  ul.issues li.ok { border-color:var(--ok); }
+  .hl { background:rgba(242,85,90,.25); border-radius:4px; padding:0 2px; }
+  #preview { white-space:pre-wrap; background:#0f1115; border-radius:10px; padding:12px; margin-top:12px; }
+  footer { text-align:center; color:var(--muted); font-size:.85rem; padding:24px; }
+  .approve { margin-top:16px; display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Brand <span>Guardian</span> Lite</h1>
+  <p>Incolla un testo di marketing (magari scritto con un'AI) e le regole del tuo brand. Il Guardian assegna un punteggio di coerenza da 0 a 100, evidenzia le frasi fatte e le parole vietate, e spiega ogni penalità. La decisione finale resta a una persona.</p>
+</header>
+
+<main>
+  <section class="card">
+    <label for="text">Testo da controllare</label>
+    <textarea id="text">Nel cuore di Torino, un viaggio di sapori unico nel suo genere ti aspetta. Scopri la nostra esperienza indimenticabile, perfetta per ogni occasione. Non perdere questa opportunità imperdibile!!!</textarea>
+
+    <label for="banned">Parole vietate dal brand (separate da virgola)</label>
+    <input id="banned" value="economico, low cost, imperdibile">
+
+    <label for="required">Parole chiave che il brand vuole usare (separate da virgola)</label>
+    <input id="required" value="artigianale, stagionale">
+
+    <label for="maxlen">Lunghezza massima (parole)</label>
+    <input id="maxlen" type="number" value="40">
+
+    <button id="check">Controlla</button>
+    <button id="reset" class="secondary">Esempio</button>
+  </section>
+
+  <section class="card" aria-live="polite">
+    <div class="score" id="score">–</div>
+    <div class="verdict" id="verdict">Premi "Controlla" per analizzare il testo.</div>
+    <div id="preview"></div>
+    <ul class="issues" id="issues"></ul>
+    <div class="approve" id="approveBox">
+      <button id="approve">Approva (decisione umana)</button>
+      <button id="reject" class="secondary">Rimanda al copywriter</button>
+      <p id="decision" style="color:var(--muted)"></p>
+    </div>
+  </section>
+</main>
+
+<footer>Progetto personale di Taha Bahousse, realizzato con il supporto di strumenti di AI. Funziona interamente nel browser: nessun testo viene inviato a server esterni.</footer>
+
+<script>
+const CLICHES = [
+  "nel cuore di", "un viaggio di sapori", "unico nel suo genere", "esperienza indimenticabile",
+  "perfetto per ogni occasione", "perfetta per ogni occasione", "non perdere", "imperdibile",
+  "a 360 gradi", "eccellenza italiana", "qualità senza compromessi", "lasciati conquistare",
+  "un mix perfetto", "tra tradizione e innovazione", "a portata di click", "il meglio di",
+  "scopri la magia", "in un mondo in cui", "porta la tua esperienza al livello successivo",
+  "rivoluzionario", "senza precedenti"
+];
+
+function list(id){ return document.getElementById(id).value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean); }
+function esc(s){ return s.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function analyze(){
+  const raw = document.getElementById("text").value;
+  const low = raw.toLowerCase();
+  const issues = [];
+  let score = 100;
+  const marks = [];
+
+  CLICHES.forEach(c => {
+    let i = low.indexOf(c);
+    if (i >= 0) { score -= 8; issues.push({lvl:"warn", msg:`Frase fatta: "${c}". Sostituiscila con un dettaglio concreto del prodotto.`}); }
+    while (i >= 0) { marks.push([i, i + c.length]); i = low.indexOf(c, i + 1); }
+  });
+
+  list("banned").forEach(w => {
+    let i = low.indexOf(w);
+    if (i >= 0) { score -= 15; issues.push({lvl:"bad", msg:`Parola vietata dal brand: "${w}".`}); }
+    while (i >= 0) { marks.push([i, i + w.length]); i = low.indexOf(w, i + 1); }
+  });
+
+  const req = list("required");
+  const missing = req.filter(w => !low.includes(w));
+  if (req.length && missing.length) { score -= 5 * missing.length; issues.push({lvl:"warn", msg:`Mancano parole chiave del brand: ${missing.join(", ")}.`}); }
+
+  const words = raw.trim().split(/\s+/).filter(Boolean).length;
+  const max = parseInt(document.getElementById("maxlen").value || "0", 10);
+  if (max && words > max) { score -= 10; issues.push({lvl:"warn", msg:`Troppo lungo: ${words} parole su un massimo di ${max}.`}); }
+
+  const excl = (raw.match(/!{2,}/g) || []).length;
+  if (excl) { score -= 6; issues.push({lvl:"warn", msg:"Punti esclamativi multipli: tono da volantino, poco credibile."}); }
+
+  const caps = (raw.match(/\b[A-ZÀ-Ý]{4,}\b/g) || []).length;
+  if (caps) { score -= 5; issues.push({lvl:"warn", msg:"Parole tutte in maiuscolo: sembra urlato."}); }
+
+  const hasNumber = /\d/.test(raw);
+  if (!hasNumber) { score -= 4; issues.push({lvl:"warn", msg:"Nessun dato concreto (prezzo, data, quantità, orario): il testo resta generico."}); }
+
+  score = Math.max(0, Math.min(100, score));
+  if (!issues.length) issues.push({lvl:"ok", msg:"Nessun problema trovato: il testo rispetta le regole indicate."});
+
+  // highlight
+  marks.sort((a,b)=>a[0]-b[0]);
+  let out = "", pos = 0;
+  marks.forEach(([s,e]) => { if (s < pos) return; out += esc(raw.slice(pos, s)) + '<span class="hl">' + esc(raw.slice(s, e)) + "</span>"; pos = e; });
+  out += esc(raw.slice(pos));
+
+  const s = document.getElementById("score");
+  s.textContent = score;
+  s.style.color = score >= 80 ? "var(--ok)" : score >= 60 ? "var(--warn)" : "var(--bad)";
+  document.getElementById("verdict").textContent =
+    score >= 80 ? "Coerente: pronto per la revisione finale." :
+    score >= 60 ? "Da sistemare: qualche segnale di testo generico." :
+    "Rischio \"AI slop\": da riscrivere prima della pubblicazione.";
+  document.getElementById("preview").innerHTML = out;
+  document.getElementById("issues").innerHTML = issues.map(i => `<li class="${i.lvl}">${esc(i.msg)}</li>`).join("");
+  document.getElementById("approveBox").style.display = "block";
+  document.getElementById("decision").textContent = "";
+}
+
+document.getElementById("check").onclick = analyze;
+document.getElementById("reset").onclick = () => location.reload();
+document.getElementById("approve").onclick = () => document.getElementById("decision").textContent = "Approvato da una persona il " + new Date().toLocaleString("it-IT") + ".";
+document.getElementById("reject").onclick = () => document.getElementById("decision").textContent = "Rimandato al copywriter con le note sopra.";
+</script>
+</body>
+</html>

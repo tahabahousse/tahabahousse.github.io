@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Identity: music branding per brand che vogliono farsi riconoscere</title>
+<style>
+  :root { --bg:#fff7ef; --ink:#1d1a17; --muted:#6f655c; --hot:#ff5a36; --deep:#2b1b4a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); line-height:1.55; }
+  .wrap { max-width:1040px; margin:auto; padding:0 28px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:22px 0; }
+  nav b { font-size:1.1rem; } nav b span { color:var(--hot); }
+  nav a { color:var(--ink); text-decoration:none; margin-left:18px; font-size:.92rem; }
+  .hero { padding:56px 0 80px; display:grid; grid-template-columns:1.2fr 1fr; gap:40px; align-items:center; }
+  @media (max-width:860px){ .hero { grid-template-columns:1fr; } }
+  .hero h1 { font-size:3.2rem; line-height:1.05; margin:0 0 16px; letter-spacing:-.02em; }
+  .hero h1 em { font-style:normal; color:var(--hot); }
+  .hero p { color:var(--muted); font-size:1.1rem; max-width:520px; }
+  .bars { display:flex; gap:6px; align-items:flex-end; height:220px; background:var(--deep); border-radius:22px; padding:28px; }
+  .bars i { flex:1; background:linear-gradient(var(--hot), #ffb36b); border-radius:6px; animation:eq 1.2s ease-in-out infinite; }
+  @keyframes eq { 0%,100%{ height:20%; } 50%{ height:95%; } }
+  section { padding:64px 0; }
+  h2 { font-size:2rem; margin:0 0 6px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); margin:0 0 28px; }
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  @media (max-width:860px){ .grid { grid-template-columns:1fr; } }
+  .box { background:#fff; border-radius:18px; padding:24px; box-shadow:0 1px 0 rgba(0,0,0,.05); }
+  .box h3 { margin:0 0 6px; }
+  .box p { margin:0; color:var(--muted); }
+  .lab { background:var(--deep); color:#fff; border-radius:24px; padding:36px; }
+  .lab p { color:#cfc4e6; }
+  .moods { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0; }
+  .moods button { background:transparent; color:#fff; border:1px solid #6b5a92; border-radius:999px; padding:10px 16px; cursor:pointer; font:inherit; }
+  .moods button.on { background:var(--hot); border-color:var(--hot); }
+  .play { background:var(--hot); color:#fff; border:0; border-radius:12px; padding:14px 22px; font-weight:700; font-size:1rem; cursor:pointer; }
+  #notes { font-family: ui-monospace, Menlo, monospace; margin-top:14px; color:#ffb36b; }
+  .steps { counter-reset:s; }
+  .steps .box { position:relative; padding-top:48px; }
+  .steps .box::before { counter-increment:s; content:"0" counter(s); position:absolute; top:18px; left:24px; font-weight:800; color:var(--hot); }
+  .cta { text-align:center; }
+  .cta a { display:inline-block; margin-top:16px; background:var(--ink); color:#fff; padding:14px 24px; border-radius:12px; text-decoration:none; font-weight:700; }
+  footer { text-align:center; color:var(--muted); font-size:.85rem; padding:28px 0 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><b>Sound<span>.</span>Identity</b><div><a href="#servizi">Servizi</a><a href="#lab">Prova il lab</a><a href="#contatti">Contatti</a></div></nav>
+
+  <div class="hero">
+    <div>
+      <h1>Il tuo brand ha un logo.<br>Ha anche un <em>suono</em>?</h1>
+      <p>Sonic logo, musica per spot e playlist per i punti vendita: un'identità sonora coerente, riconoscibile in tre secondi, su ogni canale.</p>
+    </div>
+    <div class="bars" aria-hidden="true">
+      <i style="animation-delay:0s"></i><i style="animation-delay:.15s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.45s"></i><i style="animation-delay:.6s"></i><i style="animation-delay:.75s"></i><i style="animation-delay:.9s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.5s"></i><i style="animation-delay:.35s"></i>
+    </div>
+  </div>
+</div>
+
+<section id="servizi">
+  <div class="wrap">
+    <h2>Cosa facciamo</h2>
+    <p class="sub">Tre servizi, un'unica identità.</p>
+    <div class="grid">
+      <div class="box"><h3>Sonic logo</h3><p>Una firma sonora di 2-4 secondi, da usare in spot, video social, app e telefonate.</p></div>
+      <div class="box"><h3>Musica per campagne</h3><p>Brani e adattamenti coerenti con il sonic logo, per ogni formato e durata.</p></div>
+      <div class="box"><h3>Sound in store</h3><p>Playlist per i punti vendita, pensate per orario, target e ritmo del negozio.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="lab">
+  <div class="wrap">
+    <div class="lab">
+      <h2>Sonic Logo Lab</h2>
+      <p>Scegli il carattere del tuo brand e ascolta una bozza di firma sonora, generata nel browser.</p>
+      <div class="moods" id="moods">
+        <button data-m="energico" class="on">Energico</button>
+        <button data-m="elegante">Elegante</button>
+        <button data-m="affidabile">Affidabile</button>
+        <button data-m="giocoso">Giocoso</button>
+      </div>
+      <button class="play" id="play">▶ Ascolta</button>
+      <div id="notes"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Come lavoriamo</h2>
+    <p class="sub">Dall'ascolto del brand alla consegna dei file.</p>
+    <div class="grid steps">
+      <div class="box"><h3>Ascolto</h3><p>Valori, pubblico, concorrenti: cosa deve dire il suono prima ancora della musica.</p></div>
+      <div class="box"><h3>Bozze</h3><p>Tre direzioni sonore a confronto, con test su chi conosce il brand.</p></div>
+      <div class="box"><h3>Consegna</h3><p>Sonic logo, varianti e linee guida d'uso per ogni canale.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="contatti">
+  <div class="wrap">
+    <h2>Diamo una voce al tuo brand</h2>
+    <p class="sub">Raccontaci il tuo progetto.</p>
+    <a href="mailto:tahabahousse@icloud.com?subject=Sound%20Identity">Scrivici</a>
+  </div>
+</section>
+
+<footer>Progetto personale di Taha Bahousse, realizzato con il supporto di strumenti di AI. Concept di landing page.</footer>
+
+<script>
+const MOODS = {
+  energico:   { notes:[523.25, 659.25, 783.99, 1046.5], wave:"sawtooth", step:0.13, names:"Do5 · Mi5 · Sol5 · Do6" },
+  elegante:   { notes:[440.00, 554.37, 659.25, 830.61], wave:"sine",     step:0.32, names:"La4 · Do#5 · Mi5 · Sol#5" },
+  affidabile: { notes:[261.63, 329.63, 392.00, 523.25], wave:"triangle", step:0.26, names:"Do4 · Mi4 · Sol4 · Do5" },
+  giocoso:    { notes:[587.33, 783.99, 659.25, 880.00], wave:"square",   step:0.11, names:"Re5 · Sol5 · Mi5 · La5" }
+};
+let mood = "energico", ctx;
+document.querySelectorAll("#moods button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#moods button").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); mood = b.dataset.m;
+});
+document.getElementById("play").onclick = () => {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  const m = MOODS[mood], t0 = ctx.currentTime + 0.05;
+  m.notes.forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = m.wave; o.frequency.value = f;
+    const s = t0 + i * m.step, len = i === m.notes.length - 1 ? m.step * 4 : m.step * 1.1;
+    g.gain.setValueAtTime(0, s); g.gain.linearRampToValueAtTime(0.18, s + 0.02); g.gain.exponentialRampToValueAtTime(0.001, s + len);
+    o.connect(g).connect(ctx.destination); o.start(s); o.stop(s + len + 0.05);
+  });
+  document.getElementById("notes").textContent = "Firma " + mood + ": " + m.names;
+};
+</script>
+</body>
+</html>
